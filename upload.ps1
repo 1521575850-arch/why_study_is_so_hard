@@ -36,6 +36,14 @@ $msg = Read-Host "请输入本次更新说明(直接回车用自动时间)"
 if ([string]::IsNullOrWhiteSpace($msg)) { $msg = "update $(Get-Date -Format 'yyyy-MM-dd HH:mm')" }
 git commit -m $msg 2>&1 | Out-Null
 git push
+if ($LASTEXITCODE -ne 0) {
+  Write-Host ""
+  Write-Host "!! 上传失败：网络连不上 GitHub(国内访问不稳定)。" -ForegroundColor Red
+  Write-Host "代码已安全保存在本地仓库，不会丢失。" -ForegroundColor Yellow
+  Write-Host "稍等几分钟再双击本工具重试即可，或等网络恢复。" -ForegroundColor Yellow
+  Read-Host "按回车退出"
+  exit
+}
 Write-Host ""
 Write-Host "===== 上传完成! 刷新 GitHub 页面即可查看 =====" -ForegroundColor Green
 Read-Host "按回车退出"
