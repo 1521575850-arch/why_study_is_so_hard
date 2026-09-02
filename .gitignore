@@ -12,3 +12,8 @@ Thumbs.db
 
 # Linux 无扩展名编译产物(由同名 .c 生成)
 
+
+# 本地工具脚本(不上传GitHub)
+push.bat
+upload.bat
+upload.ps1
