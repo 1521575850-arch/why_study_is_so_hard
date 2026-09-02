@@ -1,0 +1,50 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        //编译当前目录所有C文件，可以修改此参数生成main.exe
+        {
+            "label": "编译当前目录所有C文件",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "-g",
+                "${fileDirname}\\*.c",
+                "-o",
+                "${fileDirname}\\main.exe",
+                "-I",
+                "${fileDirname}"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "detail": "编译当前文件所在目录下的所有 .c 文件"
+        },
+        // 编译当前文件，可以修改以下参数
+        {
+            "type": "cppbuild",
+            "label": "C/C++: gcc.exe 生成活动文件",
+            "command": "D:\\study\\study_app\\mingw64\\bin\\gcc.exe",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+            ],
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
