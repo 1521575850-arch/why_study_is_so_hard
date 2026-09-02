@@ -1,0 +1,14 @@
+﻿# 编译产物
+*.exe
+*.o
+*.obj
+*.out
+*.class
+# VS Code 本地配置(保留 .vscode 里的共用配置则去掉)
+# .vscode/
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# Linux 无扩展名编译产物(由同名 .c 生成)
+
