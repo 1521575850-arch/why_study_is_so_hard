@@ -28,21 +28,19 @@ void waitEnter()
  */
 void trim(char *str)
 {
-    if (str == NULL || *str == '\0') // 空指针或空字符串直接返回
+    if (str == NULL) // 空指针直接返回
         return;
-    // 去除尾部空格
-    char *end = str + strlen(str) - 1;                 // 指向字符串最后一个字符
-    while (end >= str && isspace((unsigned char)*end)) // 从后往前跳过空白字符
-        end--;
-    *(end + 1) = '\0'; // 在第一个非空白字符后放置字符串结束符
-    // 去除头部空格
+    // 去除头部空白
     char *start = str;                     // 指向字符串开头
     while (isspace((unsigned char)*start)) // 跳过开头的空白字符
         start++;
-    if (start != str) // 如果开头有空白被跳过
-    {
+    if (start != str)                           // 如果开头有空白被跳过
         memmove(str, start, strlen(start) + 1); // 将 start 开始的字符串（包含结尾'\0'）移动到 str 位置
-    }
+    // 去除尾部空白
+    size_t len = strlen(str);
+    while (len > 0 && isspace((unsigned char)str[len - 1])) // 从后往前跳过空白字符
+        len--;
+    str[len] = '\0'; // 在第一个非空白字符后放置字符串结束符
 }
 /*
  * 清理字符串中的制表符、换行符，替换为空格
@@ -80,20 +78,18 @@ int isBlank(const char *str)
  */
 int readLine(char *buffer, int size)
 {
-    if (fgets(buffer, size, stdin) == NULL) // 读取一行，失败返回 0
+    if (fgets(buffer, size, stdin) == NULL)
         return 0;
-    // 检查是否读到了换行符
+
     if (strchr(buffer, '\n') == NULL)
     {
-        // 没有换行符，说明输入超长，清空本行剩余内容
         cleanInputBuffer();
+        buffer[0] = '\0';
+        return 0;
     }
-    else
-    {
-        // 去除换行符
-        buffer[strcspn(buffer, "\n")] = 0;
-    }
-    trim(buffer); // 去除首尾空格
+
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    trim(buffer);
     return 1;
 }
 
@@ -105,7 +101,7 @@ int readLine(char *buffer, int size)
 int confirmAction(const char *prompt)
 {
     printf("%s (y/n): ", prompt);  // 显示提示
-    char c = getchar();            // 读取第一个字符
+    int c = getchar();             // 读取第一个字符
     cleanInputBuffer();            // 清掉本行剩余字符
     return (c == 'y' || c == 'Y'); // 判断是否为确认
 }

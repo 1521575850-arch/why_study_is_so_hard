@@ -148,7 +148,7 @@ int main() // 初始化链表，加载文件数据，菜单循环
             else
             {
                 printf("保存失败！是否仍要退出？(y/n): ");
-                char c = getchar();
+                int c = getchar();
                 cleanInputBuffer();
                 if (c == 'y' || c == 'Y')
                 {

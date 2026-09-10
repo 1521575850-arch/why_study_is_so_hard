@@ -54,20 +54,23 @@ void filterByTotal(StuList head, float min, float max); // 筛选总分在 [min,
 /*
  *学生基本操作函数声明
  */
-int isIdExist(StuList head, const char *id);               // 判断学号是否已存在
-int isNameExist(StuList head, const char *name);           // 判断姓名是否已存在
-void addStudent(StuList *head);                            // 新增单个学生，检查唯一性后插入链表尾部
-void delStu(StuList *head);                                // 按学号删除学生，删除前二次确认
-void batchImport(StuList *head);                           // 批量导入学生，跳过重复学号或姓名
-void showAll(StuList head);                                // 显示全部学生信息，分页显示
-void searchStudent(StuList head);                          // 按学号或姓名查询学生，显示匹配结果
-void modifyStu(StuList head);                              // 修改学生信息
-void clearList(StuList *head);                             // 清空链表所有节点，并重置插入顺序
-int saveToFile(StuList head);                              // 保存链表数据到文件 students.txt
-void loadFromFile(StuList *head);                          // 从文件students.txt读取数据，跳过表头，查重后插入链表
-int matchHobby(const char *hobbyStr, const char *keyword); // 匹配爱好
-void filterByHobby(StuList head, const char *key);         // 按爱好关键词筛选学生并输出
-void groupByHobby(StuList head);                           // 按爱好分组
+int isIdExist(StuList head, const char *id);                   // 判断学号是否已存在
+int isNameExist(StuList head, const char *name);               // 判断姓名是否已存在
+void addStudent(StuList *head);                                // 新增单个学生，检查唯一性后插入链表尾部
+void delStu(StuList *head);                                    // 按学号删除学生，删除前二次确认
+void batchImport(StuList *head);                               // 批量导入学生，跳过重复学号或姓名
+void showAll(StuList head);                                    // 显示全部学生信息，分页显示
+void searchStudent(StuList head);                              // 按学号或姓名查询学生，显示匹配结果
+void modifyStu(StuList head);                                  // 修改学生信息
+void clearList(StuList *head);                                 // 清空链表所有节点，并重置插入顺序
+int saveToFile(StuList head);                                  // 保存链表数据到文件 students.txt
+void loadFromFile(StuList *head);                              // 从文件students.txt读取数据，跳过表头，查重后插入链表
+int matchHobby(const char *hobbyStr, const char *keyword);     // 匹配爱好
+void filterByHobby(StuList head, const char *key);             // 按爱好关键词筛选学生并输出
+void groupByHobby(StuList head);                               // 按爱好分组
+int isValidTextField(const char *str, int allowEmpty);         // 判断文本字段是否有效，允许空字符串
+int parseScore(const char *text, float *result);               // 解析成绩字符串为浮点数，返回 1 成功，0 失败
+int splitTabFields(char *line, char *fields[], int maxFields); // 按制表符分隔字符串，返回成功字段数
 
 void menu(); // 主菜单
 

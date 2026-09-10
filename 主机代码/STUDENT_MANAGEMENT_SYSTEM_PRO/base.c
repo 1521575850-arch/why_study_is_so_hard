@@ -1,4 +1,66 @@
 #include "student.h"
+#include <errno.h>
+#include <string.h>
+#include <math.h>
+#include <windows.h>
+/*
+ *严格解析成绩字符串：必须是有效的浮点数，且在[0,100]范围内
+ *不允许"80abc"或"nan"、"inf"等非数字字符
+ *成功返回1，结果存在*result，失败返回0，
+ */
+int parseScore(const char *text, float *result)
+{
+    char *end;
+    float value;
+    errno = 0;
+    value = strtof(text, &end);
+    // 跳过结尾空白
+    while (isspace((unsigned char)*end))
+        end++;
+    // 必须完整解析，且errno无溢出，值是有限数，且在范围内
+    if (text == end || *end != '\0' || errno == ERANGE || !isfinite(value) || value < 0 || value > 100)
+
+    {
+        return 0;
+    }
+    *result = value;
+    return 1;
+}
+int isValidTextField(const char *str, int allowEmpty)
+{
+    if (str == NULL || (!allowEmpty && isBlank(str))) // 空指针直接返回
+        return 0;
+    for (const unsigned char *p = (const unsigned char *)str; *p; p++)
+    {
+        if (*p == '\t' || *p == '\r' || *p == '\n')
+            return 0;
+    }
+    return 1;
+}
+/**
+ * 将一行按制表符拆分为字段，保留空字段。
+ * line: 输入行，会被修改（在制表符处插入 '\0'）
+ * fields: 输出字段指针数组
+ * maxFields: fields 数组容量
+ * 返回实际拆出的字段数，如果字段数超过 maxFields 则返回 0 表示失败。
+ */
+int splitTabFields(char *line, char *fields[], int maxFields)
+{
+    int count = 0;
+    fields[count++] = line;
+
+    for (char *p = line; *p; p++)
+    {
+        if (*p == '\t')
+        {
+            *p = '\0';
+            if (count >= maxFields)
+                return 0; // 字段太多，失败
+            fields[count++] = p + 1;
+        }
+    }
+    return count;
+}
 // 全局计数器定义：用于为学生分配唯一的插入顺序号
 int insertOrder = 0;
 /*
@@ -35,82 +97,102 @@ int isNameExist(StuList head, const char *name)
  */
 void addStudent(StuList *head)
 {
-    stu *newStu = (stu *)malloc(sizeof(stu)); // 新学生节点分配内存
-    if (newStu == NULL)                       // 检查内存是否分配成功
+    stu *newStu = (stu *)malloc(sizeof(stu));
+    if (newStu == NULL)
     {
         printf("内存分配失败。\n");
-        return; // 分配失败则取消操作
+        return;
     }
+
     printf("输入学号：");
-    if (!readLine(newStu->id, ID_LEN)) // 读取学号，失败则处理
+    if (!readLine(newStu->id, ID_LEN))
     {
         printf("输入错误，已取消。\n");
-        free(newStu); // 释放已分配内存
+        free(newStu);
         return;
     }
-    if (isIdExist(*head, newStu->id)) // 检查学号是否重复
+    if (!isValidTextField(newStu->id, 0))
+    {
+        printf("学号不能为空且不能包含制表符或换行符。\n");
+        free(newStu);
+        return;
+    }
+    if (isIdExist(*head, newStu->id))
     {
         printf("错误：该学号已存在。\n");
-        free(newStu); // 重复则释放内存并返回
+        free(newStu);
         return;
     }
+
     printf("输入姓名：");
-    if (!readLine(newStu->name, NAME_LEN)) // 读取姓名
+    if (!readLine(newStu->name, NAME_LEN))
     {
-        free(newStu); // 失败则释放内存并返回
+        free(newStu);
         return;
     }
-    if (isNameExist(*head, newStu->name)) // 检查姓名是否重复
+    if (!isValidTextField(newStu->name, 0))
+    {
+        printf("姓名不能为空且不能包含制表符或换行。\n");
+        free(newStu);
+        return;
+    }
+    if (isNameExist(*head, newStu->name))
     {
         printf("错误：该姓名已存在。\n");
         free(newStu);
         return;
     }
+
     printf("输入性别：");
-    if (!readLine(newStu->sex, 10)) // 读取性别
+    if (!readLine(newStu->sex, 10))
     {
         free(newStu);
         return;
     }
+    if (!isValidTextField(newStu->sex, 1)) // 性别允许为空，但禁止制表符/换行
+    {
+        printf("性别不能包含制表符或换行。\n");
+        free(newStu);
+        return;
+    }
+
     printf("输入%d门科目成绩(0-100)：\n", SUB_MAX);
     for (int i = 0; i < SUB_MAX; i++)
     {
+        char input[100];
         while (1)
         {
             printf("第%d科：", i + 1);
-            if (scanf("%f", &newStu->score[i]) != 1) // 检查读取是否成功
+            if (!readLine(input, sizeof(input)))
             {
                 printf("无效输入，请重新输入。\n");
-                cleanInputBuffer(); // 清空缓冲区，防止死循环
-                continue;           // 重新输入
+                continue;
             }
-            if (newStu->score[i] < 0 || newStu->score[i] > 100) // 检查成绩范围
+            if (!parseScore(input, &newStu->score[i]))
             {
                 printf("成绩必须在0-100之间。\n");
-                continue; // 范围错误，重新输入
+                continue;
             }
-            break; // 输入合法，跳出循环
+            break;
         }
     }
-    cleanInputBuffer(); // 清除成绩输入后的换行符
 
     printf("输入爱好（多个爱好用逗号分隔）：");
-    if (!readLine(newStu->hobby, HOBBY_LEN)) // 读取爱好
+    if (!readLine(newStu->hobby, HOBBY_LEN))
     {
         free(newStu);
         return;
     }
-    sanitize(newStu->hobby); // 清理爱好字符串中的制表符等
+    sanitize(newStu->hobby);
 
-    // 所有检查通过后再分配order，避免重复时浪费序号
-    newStu->order = ++insertOrder; // 分配唯一插入顺序号
-    calcTotalAvgLevel(newStu);     // 计算总分、平均分、等级
-    newStu->next = NULL;           // 新节点置空
+    newStu->order = ++insertOrder;
+    calcTotalAvgLevel(newStu);
+    newStu->next = NULL;
 
-    stu *p = *head; // 从头节点开始
-    while (p->next) // 找到链表尾部
+    stu *p = *head;
+    while (p->next)
         p = p->next;
-    p->next = newStu; // 将新节点连接到尾部
+    p->next = newStu;
     printf("学生添加成功。\n");
 }
 
@@ -121,35 +203,42 @@ void addStudent(StuList *head)
  */
 void batchImport(StuList *head)
 {
-    if (!confirmAction("确认开始批量导入学生？")) // 二次确认
+    if (!confirmAction("确认开始批量导入学生？"))
     {
         printf("操作已取消。\n");
         return;
     }
     int count;
     printf("请输入本次批量录入人数：");
-    if (scanf("%d", &count) != 1 || count <= 0) // 读取数量并检查合法性
+    if (scanf("%d", &count) != 1 || count <= 0)
     {
         printf("输入无效。\n");
         cleanInputBuffer();
         return;
     }
-    cleanInputBuffer(); // 清掉换行符
+    cleanInputBuffer();
 
-    for (int i = 0; i < count; i++) // 循环录入每个学生
+    for (int i = 0; i < count; i++)
     {
         printf("\n录入第%d位学生\n", i + 1);
-        stu *newStu = (stu *)malloc(sizeof(stu)); // 分配新节点
+        stu *newStu = (stu *)malloc(sizeof(stu));
         if (newStu == NULL)
         {
             printf("内存分配失败，跳过该学生。\n");
-            continue; // 跳过
+            continue;
         }
+
         printf("学号：");
         if (!readLine(newStu->id, ID_LEN))
         {
             free(newStu);
             printf("输入错误，跳过该学生。\n");
+            continue;
+        }
+        if (!isValidTextField(newStu->id, 0))
+        {
+            printf("学号不能为空且不能包含制表符或换行，跳过该学生。\n");
+            free(newStu);
             continue;
         }
         if (isIdExist(*head, newStu->id))
@@ -158,11 +247,18 @@ void batchImport(StuList *head)
             free(newStu);
             continue;
         }
+
         printf("姓名：");
         if (!readLine(newStu->name, NAME_LEN))
         {
             free(newStu);
             printf("输入错误，跳过该学生。\n");
+            continue;
+        }
+        if (!isValidTextField(newStu->name, 0))
+        {
+            printf("姓名不能为空且不能包含制表符或换行，跳过该学生。\n");
+            free(newStu);
             continue;
         }
         if (isNameExist(*head, newStu->name))
@@ -171,33 +267,40 @@ void batchImport(StuList *head)
             free(newStu);
             continue;
         }
+
         printf("性别：");
         if (!readLine(newStu->sex, 10))
         {
             free(newStu);
             continue;
         }
+        if (!isValidTextField(newStu->sex, 1))
+        {
+            printf("性别不能包含制表符或换行，跳过该学生。\n");
+            free(newStu);
+            continue;
+        }
+
         printf("三科成绩(0-100)：\n");
         for (int j = 0; j < SUB_MAX; j++)
         {
+            char input[32];
             while (1)
             {
                 printf("第%d科：", j + 1);
-                if (scanf("%f", &newStu->score[j]) != 1)
+                if (!readLine(input, sizeof(input)))
                 {
-                    printf("无效输入。\n");
-                    cleanInputBuffer();
+                    printf("输入错误，请重新输入。\n");
                     continue;
                 }
-                if (newStu->score[j] < 0 || newStu->score[j] > 100)
+                if (!parseScore(input, &newStu->score[j]))
                 {
-                    printf("成绩必须在0-100之间。\n");
+                    printf("请输入 0~100 的有效成绩。\n");
                     continue;
                 }
                 break;
             }
         }
-        cleanInputBuffer();
 
         printf("爱好：");
         if (!readLine(newStu->hobby, HOBBY_LEN))
@@ -205,13 +308,13 @@ void batchImport(StuList *head)
             free(newStu);
             continue;
         }
-        sanitize(newStu->hobby); // 清理制表符
+        sanitize(newStu->hobby);
 
-        newStu->order = ++insertOrder; // 分配顺序号
-        calcTotalAvgLevel(newStu);     // 计算总分等
+        newStu->order = ++insertOrder;
+        calcTotalAvgLevel(newStu);
         newStu->next = NULL;
 
-        stu *p = *head; // 找到尾部并插入
+        stu *p = *head;
         while (p->next)
             p = p->next;
         p->next = newStu;
@@ -302,12 +405,12 @@ void modifyStu(StuList head)
 {
     char sid[ID_LEN];
     printf("输入要修改的学生学号：");
-    if (!readLine(sid, ID_LEN)) // 读取待修改学号
+    if (!readLine(sid, ID_LEN))
     {
         printf("输入错误。\n");
         return;
     }
-    stu *p = head->next; // 查找对应学生
+    stu *p = head->next;
     while (p)
     {
         if (strcmp(p->id, sid) == 0)
@@ -325,29 +428,33 @@ void modifyStu(StuList head)
         return;
     }
 
-    // 临时变量，先收集修改内容
-    char newId[ID_LEN] = {0};       // 新学号
-    char newName[NAME_LEN] = {0};   // 新姓名
-    char newSex[10] = {0};          // 新性别
-    float newScore[SUB_MAX];        // 新成绩
-    int changeScore[SUB_MAX] = {0}; // 标记哪些成绩需要修改
-    char newHobby[HOBBY_LEN] = {0}; // 新爱好
-    char input[100];                // 通用输入缓冲区
+    char newId[ID_LEN] = {0};
+    char newName[NAME_LEN] = {0};
+    char newSex[10] = {0};
+    float newScore[SUB_MAX];
+    int changeScore[SUB_MAX] = {0};
+    char newHobby[HOBBY_LEN] = {0};
+    char input[100];
 
     printf("输入新学号（直接回车保留原值）：");
-    if (!readLine(input, ID_LEN)) // 读取新学号
+    if (!readLine(input, ID_LEN))
     {
         printf("输入错误，修改取消。\n");
         return;
     }
-    if (!isBlank(input)) // 如果输入了内容
+    if (!isBlank(input))
     {
-        if (strcmp(input, p->id) != 0 && isIdExist(head, input)) // 检查新学号是否与他人重复
+        if (!isValidTextField(input, 0))
+        {
+            printf("学号不能为空且不能包含制表符或换行符。\n");
+            return;
+        }
+        if (strcmp(input, p->id) != 0 && isIdExist(head, input))
         {
             printf("新学号已存在，修改失败。\n");
             return;
         }
-        strcpy(newId, input); // 暂存新学号
+        strcpy(newId, input);
     }
 
     printf("输入新姓名（直接回车保留原值）：");
@@ -358,13 +465,19 @@ void modifyStu(StuList head)
     }
     if (!isBlank(input))
     {
-        if (strcmp(input, p->name) != 0 && isNameExist(head, input)) // 检查新姓名是否重复
+        if (!isValidTextField(input, 0))
+        {
+            printf("姓名不能包含制表符或换行。\n");
+            return;
+        }
+        if (strcmp(input, p->name) != 0 && isNameExist(head, input))
         {
             printf("新姓名已存在，修改失败。\n");
             return;
         }
         strcpy(newName, input);
     }
+
     printf("输入新性别（直接回车保留原值）：");
     if (!readLine(input, 10))
     {
@@ -372,7 +485,15 @@ void modifyStu(StuList head)
         return;
     }
     if (!isBlank(input))
+    {
+        if (!isValidTextField(input, 1))
+        {
+            printf("性别不能包含制表符或换行。\n");
+            return;
+        }
         strcpy(newSex, input);
+    }
+
     printf("输入新三科成绩(直接回车保留原值, 0-100)：\n");
     for (int i = 0; i < SUB_MAX; i++)
     {
@@ -382,21 +503,16 @@ void modifyStu(StuList head)
             printf("输入错误，修改取消。\n");
             return;
         }
-        if (isBlank(input)) // 空行保留原值
+        if (isBlank(input))
             continue;
         float score;
-        if (sscanf(input, "%f", &score) != 1) // 解析成绩
+        if (!parseScore(input, &score))
         {
-            printf("无效输入，保留原值。\n");
-            continue;
-        }
-        if (score < 0 || score > 100) // 检查范围
-        {
-            printf("成绩需在0-100间，保留原值。\n");
+            printf("无效成绩（需 0~100 的数值），保留原值。\n");
             continue;
         }
         newScore[i] = score;
-        changeScore[i] = 1; // 标记该科需要修改
+        changeScore[i] = 1;
     }
 
     printf("输入新爱好（直接回车保留原值）：");
@@ -407,10 +523,10 @@ void modifyStu(StuList head)
     }
     if (!isBlank(input))
     {
-        sanitize(input); // 清理制表符
+        sanitize(input);
         strcpy(newHobby, input);
     }
-    // 所有检查通过，开始写回修改
+
     if (strlen(newId) > 0)
         strcpy(p->id, newId);
     if (strlen(newName) > 0)
@@ -423,7 +539,7 @@ void modifyStu(StuList head)
     if (strlen(newHobby) > 0)
         strcpy(p->hobby, newHobby);
 
-    calcTotalAvgLevel(p); // 重新计算总分、平均分、等级
+    calcTotalAvgLevel(p);
     printf("信息修改成功。总分、平均分、等级自动更新\n");
 }
 
@@ -485,33 +601,48 @@ void clearList(StuList *head)
  */
 int saveToFile(StuList head)
 {
-    FILE *fp = fopen("students.txt", "w"); // 以写模式打开文件
-    if (fp == NULL)                        // 打开失败
+    const char *tmpFile = "students.tmp";
+    const char *finalFile = "students.txt";
+
+    FILE *fp = fopen(tmpFile, "w");
+    if (fp == NULL)
     {
-        printf("无法打开文件保存数据。\n");
+        printf("无法创建临时文件保存数据。\n");
         return 0;
     }
-    fprintf(fp, "学号\t姓名\t性别\t成绩一\t成绩二\t成绩三\t爱好\n"); // 表头
+
+    fprintf(fp, "学号\t姓名\t性别\t成绩一\t成绩二\t成绩三\t爱好\t录入序号\n");
+
     stu *p = head->next;
-    while (p) // 遍历所有学生
+    while (p)
     {
-        // 临时拷贝并清理制表符，避免格式破坏
         char hobby[HOBBY_LEN];
         strcpy(hobby, p->hobby);
-        sanitize(hobby);                                     // 清理制表符、换行等
-        fprintf(fp, "%s\t%s\t%s\t", p->id, p->name, p->sex); // 写基本字段
-        for (int i = 0; i < SUB_MAX; i++)
-            fprintf(fp, "%.1f\t", p->score[i]); // 写成绩
-        fprintf(fp, "%s\n", hobby);             // 写爱好并换行
+        sanitize(hobby);
+        fprintf(fp, "%s\t%s\t%s\t%.1f\t%.1f\t%.1f\t%s\t%d\n",
+                p->id, p->name, p->sex,
+                p->score[0], p->score[1], p->score[2],
+                hobby, p->order);
         p = p->next;
     }
-    if (ferror(fp)) // 检查写入过程中是否出错
+
+    int writeFailed = ferror(fp);
+
+    if (fclose(fp) != 0)
+        writeFailed = 1;
+
+    if (writeFailed)
     {
-        printf("写入文件时发生错误。\n");
-        fclose(fp);
+        printf("写入临时文件时发生错误。\n");
+        remove(tmpFile);
         return 0;
     }
-    fclose(fp);
+    if (!MoveFileExA(tmpFile, finalFile, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+    {
+        printf("替换正式文件失败，数据已保存在临时文件 %s 中。\n", tmpFile);
+        return 0;
+    }
+
     return 1;
 }
 
@@ -522,103 +653,106 @@ int saveToFile(StuList head)
  */
 void loadFromFile(StuList *head)
 {
-    FILE *fp = fopen("students.txt", "r"); // 以读模式打开
-    if (fp == NULL)                        // 文件不存在，直接返回
+    FILE *fp = fopen("students.txt", "r");
+    if (fp == NULL)
         return;
-    char line[256];                       // 存储每行内容
-    int isFirstLine = 1;                  // 标记是否第一行
-    while (fgets(line, sizeof(line), fp)) // 逐行读取
+
+    char line[256];
+    int isFirstLine = 1;
+    while (fgets(line, sizeof(line), fp))
     {
-        line[strcspn(line, "\n")] = 0; // 去除换行符
-        if (strlen(line) == 0)         // 空行跳过
+        line[strcspn(line, "\r\n")] = 0; // 去除换行符（兼容 \n 和 \r\n）
+        if (strlen(line) == 0)
             continue;
-        if (isFirstLine) // 处理第一行
+
+        if (isFirstLine)
         {
             isFirstLine = 0;
-            // 如果包含“学号”和“姓名”，认为是表头
-            if (strstr(line, "学号") != NULL && strstr(line, "姓名") != NULL)
+            if (strstr(line, "学号") && strstr(line, "姓名"))
                 continue; // 跳过表头
-            // 否则当作数据行处理
         }
 
-        stu *newStu = (stu *)malloc(sizeof(stu)); // 分配新节点
+        stu *newStu = (stu *)malloc(sizeof(stu));
         if (newStu == NULL)
         {
             printf("内存分配失败，停止读取文件。\n");
             break;
         }
 
-        char *token = strtok(line, "\t"); // 按制表符分割，取学号
-        if (token == NULL)                // 无学号则放弃此行
+        char *fields[8]; // 最多支持 8 个字段（含录入序号）
+        int fieldCount = splitTabFields(line, fields, 8);
+        if (fieldCount < 7) // 至少需要 7 个字段（学号、姓名、性别、三科成绩、爱好）
         {
+            printf("警告：文件行字段不足，跳过。\n");
             free(newStu);
             continue;
         }
-        strncpy(newStu->id, token, ID_LEN - 1); // 复制学号，防止越界
-        newStu->id[ID_LEN - 1] = 0;             // 确保字符串终止
-        token = strtok(NULL, "\t");
-        if (token == NULL)
-        {
-            free(newStu);
-            continue;
-        }
-        strncpy(newStu->name, token, NAME_LEN - 1);
+
+        // 复制基本字段
+        strncpy(newStu->id, fields[0], ID_LEN - 1);
+        newStu->id[ID_LEN - 1] = 0;
+        strncpy(newStu->name, fields[1], NAME_LEN - 1);
         newStu->name[NAME_LEN - 1] = 0;
-        token = strtok(NULL, "\t"); // 取性别
-        if (token == NULL)
-        {
-            free(newStu);
-            continue;
-        }
-        strncpy(newStu->sex, token, 10 - 1);
+        strncpy(newStu->sex, fields[2], 9);
         newStu->sex[9] = 0;
-        int valid = 1;                    // 标记数据是否有效
-        for (int i = 0; i < SUB_MAX; i++) // 解析三科成绩
+
+        // 解析三科成绩
+        int valid = 1;
+        for (int i = 0; i < SUB_MAX; i++)
         {
-            token = strtok(NULL, "\t");
-            if (token == NULL)
-            {
-                valid = 0;
-                break;
-            }
-            if (sscanf(token, "%f", &newStu->score[i]) != 1) // 成绩转换失败
+            if (!parseScore(fields[3 + i], &newStu->score[i]))
             {
                 valid = 0;
                 break;
             }
         }
-        if (!valid) // 数据无效则跳过该行
+        if (!valid)
         {
-            printf("警告：文件数据格式错误，跳过一行。\n");
+            printf("警告：文件成绩格式错误，跳过该行。\n");
             free(newStu);
             continue;
         }
-        token = strtok(NULL, "\t"); // 取爱好
-        if (token == NULL)
+
+        // 处理爱好（字段 6）
+        strncpy(newStu->hobby, fields[6], HOBBY_LEN - 1);
+        newStu->hobby[HOBBY_LEN - 1] = 0;
+        sanitize(newStu->hobby);
+
+        // 处理录入序号（字段 7，如果存在）
+        int loadedOrder = 0;
+        if (fieldCount >= 8)
         {
-            newStu->hobby[0] = 0; // 没有爱好则置空
+            loadedOrder = atoi(fields[7]);
+            if (loadedOrder <= 0)
+                loadedOrder = 0; // 非法值视为未提供
         }
-        else
-        {
-            strncpy(newStu->hobby, token, HOBBY_LEN - 1);
-            newStu->hobby[HOBBY_LEN - 1] = 0;
-            sanitize(newStu->hobby); // 清理制表符
-        }
-        // 检查学号或姓名是否与已有数据重复
+
+        // 检查学号或姓名是否重复
         if (isIdExist(*head, newStu->id) || isNameExist(*head, newStu->name))
         {
             printf("警告：文件中学号或姓名重复，已跳过 %s\n", newStu->id);
             free(newStu);
             continue;
         }
-        newStu->order = ++insertOrder; // 分配顺序号
-        calcTotalAvgLevel(newStu);     // 计算总分等
+
+        // 设置 order：优先使用文件中保存的值，否则自动分配
+        if (loadedOrder > 0)
+            newStu->order = loadedOrder;
+        else
+            newStu->order = ++insertOrder;
+
+        // 更新全局 insertOrder 为当前最大值，确保后续新增序号不重复
+        if (newStu->order > insertOrder)
+            insertOrder = newStu->order;
+
+        calcTotalAvgLevel(newStu);
         newStu->next = NULL;
 
-        stu *p = *head; // 插入到链表尾部
+        // 插入链表尾部
+        stu *p = *head;
         while (p->next)
             p = p->next;
         p->next = newStu;
     }
-    fclose(fp); // 关闭文件
+    fclose(fp);
 }
