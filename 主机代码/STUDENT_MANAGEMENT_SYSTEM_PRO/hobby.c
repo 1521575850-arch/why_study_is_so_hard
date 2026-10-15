@@ -1,5 +1,6 @@
+// hobby.c
 #include "student.h"
-
+const char *HOBBY_TYPES[HOBBY_TYPE_COUNT] = {"唱歌", "跳舞", "球类", "电子竞技", "其他"};
 static void replaceChineseComma(char *str)
 {
     while (*str)
@@ -37,6 +38,83 @@ int matchHobby(const char *hobbyStr, const char *keyword)
     }
     return 0;
 }
+int parseHobbySelection(const char *input, char *out, size_t outSize)
+{
+    if (input == NULL || out == NULL || outSize == 0)
+    {
+        return 0;
+    }
+    char buf[HOBBY_LEN * 2];
+    snprintf(buf, sizeof(buf), "%s", input);
+    replaceChineseComma(buf);
+
+    out[0] = '\0';
+    char *token = strtok(buf, ",");
+    int first = 1;
+    int chosen[HOBBY_TYPE_COUNT] = {0};
+
+    while (token)
+    {
+        trim(token);
+        if (*token == '\0')
+        {
+            token = strtok(NULL, ",");
+            continue;
+        }
+        char *end;
+        long idx = strtol(token, &end, 10);
+        if (*end != '\0' || idx < 1 || idx > HOBBY_TYPE_COUNT)
+        {
+            return 0;
+        }
+        if (!chosen[idx - 1])
+        {
+            chosen[idx - 1] = 1;
+            size_t len = strlen(out);
+            snprintf(out + len, outSize - len, "%s%s", first ? "" : ",", HOBBY_TYPES[idx - 1]);
+            first = 0;
+        }
+        token = strtok(NULL, ",");
+    }
+
+    return first == 0;
+}
+int isValidHobby(const char *hobbyStr)
+{
+    if (hobbyStr == NULL)
+    {
+        return 0;
+    }
+    char buf[HOBBY_LEN];
+    snprintf(buf, sizeof(buf), "%s", hobbyStr);
+    replaceChineseComma(buf);
+
+    char *token = strtok(buf, ",");
+    int count = 0;
+    while (token)
+    {
+        trim(token);
+        if (strlen(token) > 0)
+        {
+            int ok = 0;
+            for (int i = 0; i < HOBBY_TYPE_COUNT; i++)
+            {
+                if (strcmp(token, HOBBY_TYPES[i]) == 0)
+                {
+                    ok = 1;
+                    break;
+                }
+            }
+            if (!ok)
+            {
+                return 0;
+            }
+            count++;
+        }
+        token = strtok(NULL, ",");
+    }
+    return count > 0;
+}
 
 void groupByHobby(StuList head)
 {
@@ -45,62 +123,21 @@ void groupByHobby(StuList head)
         printf("无学生数据\n");
         return;
     }
-    char hobbyGroup[MAX_HOBBY_TYPE][HOBBY_LEN];
-    int groupCnt = 0;
-    int warned = 0;
-    for (stu *p = head->next; p; p = p->next)
-    {
-        if (groupCnt >= MAX_HOBBY_TYPE)
-        {
-            if (!warned)
-            {
-                printf("警告：爱好种类过多，仅显示前%d种。\n", MAX_HOBBY_TYPE);
-                warned = 1;
-            }
-            break;
-        }
-        char buf[HOBBY_LEN];
-        normalizeHobby(buf, sizeof(buf), p->hobby);
-        char *token = strtok(buf, ",");
-        while (token)
-        {
-            trim(token);
-            if (strlen(token) == 0)
-            {
-                token = strtok(NULL, ",");
-                continue;
-            }
-            int exist = 0;
-            for (int i = 0; i < groupCnt; i++)
-            {
-                if (strcmp(hobbyGroup[i], token) == 0)
-                {
-                    exist = 1;
-                    break;
-                }
-            }
-            if (!exist)
-            {
-                if (groupCnt >= MAX_HOBBY_TYPE)
-                {
-                    break;
-                }
-                strcpy(hobbyGroup[groupCnt++], token);
-            }
-            token = strtok(NULL, ",");
-        }
-    }
 
-    for (int i = 0; i < groupCnt; i++)
+    for (int i = 0; i < HOBBY_TYPE_COUNT; i++)
     {
-        printf("【%s组】学生：", hobbyGroup[i]);
-        for (stu *cur = head->next; cur; cur = cur->next)
+        printf("【%s组】学生：", HOBBY_TYPES[i]);
+        int found = 0;
+        for (stu *p = head->next; p; p = p->next)
         {
-            if (matchHobby(cur->hobby, hobbyGroup[i]))
+            if (matchHobby(p->hobby, HOBBY_TYPES[i]))
             {
-                printf("%s(%s) ", cur->name, cur->id);
+                printf("%s(%s) ", p->name, p->id);
+                found = 1;
             }
         }
+        if (!found)
+            printf("（无）");
         printf("\n");
     }
 }

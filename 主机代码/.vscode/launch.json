@@ -2,10 +2,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) 启动",
+            "name": "原神，启动！",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
+            "program": "${fileDirname}\\main.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
@@ -13,6 +13,7 @@
             "externalConsole": false,
             "MIMode": "gdb",
             "miDebuggerPath": "D:\\study\\study_app\\mingw64\\bin\\gdb.exe",
+            "preLaunchTask": "编译当前目录所有C文件",
             "setupCommands": [
                 {
                     "description": "为 gdb 启用整齐打印",

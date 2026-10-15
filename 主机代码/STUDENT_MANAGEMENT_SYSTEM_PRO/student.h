@@ -1,3 +1,4 @@
+// student.h
 #ifndef STUDENT_H
 #define STUDENT_H
 
@@ -7,13 +8,15 @@
 #include <ctype.h>
 
 #define SUB_MAX 3
-#define NAME_LEN 25
-#define HOBBY_LEN 50
-#define ID_LEN 20
-#define SEX_LEN 10
-#define LEVEL_LEN 10
+#define NAME_LEN 64
+#define HOBBY_LEN 256
+#define ID_LEN 32
+#define SEX_LEN 16
+#define LEVEL_LEN 16
 #define PAGE_SIZE 5
 #define MAX_HOBBY_TYPE 200
+#define HOBBY_TYPE_COUNT 5
+extern const char *HOBBY_TYPES[HOBBY_TYPE_COUNT];
 
 typedef struct Student
 {
@@ -63,6 +66,8 @@ int saveToFile(StuList head);
 void loadFromFile(StuList *head);
 
 int matchHobby(const char *hobbyStr, const char *keyword);
+int parseHobbySelection(const char *input, char *out, size_t outSize);
+int isValidHobby(const char *hobbyStr);
 void groupByHobby(StuList head);
 
 void menu(void);

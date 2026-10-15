@@ -1,8 +1,11 @@
+// base.c
 #include "student.h"
 #include <errno.h>
 #include <math.h>
 #include <limits.h>
+#ifdef _WIN32
 #include <windows.h>
+#endif
 
 #define FIELD_ID 0
 #define FIELD_NAME 1
@@ -11,7 +14,7 @@
 #define FIELD_HOBBY (FIELD_SCORE + SUB_MAX)
 #define FIELD_ORDER (FIELD_HOBBY + 1)
 #define FIELD_COUNT (FIELD_ORDER + 1)
-#define FIELD_MIN FIELD_ORDER
+#define FIELD_MIN (FIELD_SCORE + SUB_MAX)
 
 int insertOrder = 0;
 int parseScore(const char *text, float *result)
@@ -134,13 +137,27 @@ void addStudent(StuList *head)
             break;
         }
     }
-    printf("输入爱好（多个爱好用逗号分隔）：");
-    if (!readLine(newStu->hobby, HOBBY_LEN))
+    printf("请选择爱好（可多选，用逗号分隔序号）：\n");
+    for (int i = 0; i < HOBBY_TYPE_COUNT; i++)
     {
-        free(newStu);
-        return;
+        printf("  %d. %s\n", i + 1, HOBBY_TYPES[i]);
     }
-    sanitize(newStu->hobby);
+
+    while (1)
+    {
+        char sel[HOBBY_LEN];
+        printf("输入序号：");
+        if (!readLine(sel, sizeof(sel)))
+        {
+            free(newStu);
+            return;
+        }
+        if (parseHobbySelection(sel, newStu->hobby, sizeof(newStu->hobby)))
+        {
+            break;
+        }
+        printf("输入无效（请用 1~%d 之间的序号，逗号分隔），请重新输入。\n", HOBBY_TYPE_COUNT);
+    }
     newStu->order = ++insertOrder;
     calcTotalAvgLevel(newStu);
     stu *p = *head;
@@ -238,6 +255,11 @@ static int readOptionalStr(const char *prompt, char *out, int outSize, int allow
         printf("不能包含制表符。\n");
         return -1;
     }
+    if (strlen(input) >= (size_t)outSize)
+    {
+        printf("输入过长（最多 %d 字符），请重新输入。\n", outSize - 1);
+        return -1;
+    }
     snprintf(out, outSize, "%s", input);
     return 1;
 }
@@ -326,16 +348,37 @@ void modifyStu(StuList head)
         newScore[i] = s;
         chScore[i] = 1;
     }
-    r = readOptionalStr("输入新爱好", newHobby, sizeof(newHobby), 1);
-    if (r == -1)
+    printf("---- 修改爱好 ----\n");
+    printf("直接回车保留原爱好；输入 0 清空；其它请输入序号。\n");
+    for (int i = 0; i < HOBBY_TYPE_COUNT; i++)
     {
-        printf("修改取消。\n");
+        printf("  %d. %s\n", i + 1, HOBBY_TYPES[i]);
+    }
+
+    char sel[HOBBY_LEN];
+    printf("输入：");
+    if (!readLine(sel, sizeof(sel)))
+    {
+        printf("输入错误，修改取消。\n");
         return;
     }
-    if (r == 1)
+
+    if (isBlank(sel))
     {
-        sanitize(newHobby);
+        // 保留原值
+    }
+    else if (strcmp(sel, "0") == 0)
+    {
+        newHobby[0] = '\0';
         chHobby = 1;
+    }
+    else if (parseHobbySelection(sel, newHobby, sizeof(newHobby)))
+    {
+        chHobby = 1;
+    }
+    else
+    {
+        printf("输入无效，爱好未修改。\n");
     }
     if (chId)
     {
@@ -405,10 +448,30 @@ void clearList(StuList *head)
     (*head)->next = NULL;
     insertOrder = 0;
 }
+static void getDataFilePath(char *buf, size_t size, const char *filename)
+{
+#ifdef _WIN32
+    char exePath[MAX_PATH];
+    DWORD n = GetModuleFileNameA(NULL, exePath, MAX_PATH);
+    if (n > 0 && n < MAX_PATH)
+    {
+        char *slash = strrchr(exePath, '\\');
+        if (slash)
+        {
+            *(slash + 1) = '\0';
+            snprintf(buf, size, "%s%s", exePath, filename);
+            return;
+        }
+    }
+#endif
+    snprintf(buf, size, "%s", filename);
+}
 int saveToFile(StuList head)
 {
-    const char *tmpFile = "students.tmp";
-    const char *finalFile = "students.txt";
+    char tmpFile[512];
+    char finalFile[512];
+    getDataFilePath(tmpFile, sizeof(tmpFile), "students.tmp");
+    getDataFilePath(finalFile, sizeof(finalFile), "students.txt");
     FILE *fp = fopen(tmpFile, "w");
     if (fp == NULL)
     {
@@ -444,7 +507,11 @@ int saveToFile(StuList head)
         remove(tmpFile);
         return 0;
     }
+#ifdef _WIN32
     if (!MoveFileExA(tmpFile, finalFile, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+#else
+    if (remove(finalFile) != 0 || rename(tmpFile, finalFile) != 0)
+#endif
     {
         printf("替换正式文件失败，数据已保存在临时文件 %s 中。\n", tmpFile);
         return 0;
@@ -471,7 +538,9 @@ static int copyField(char *dst, size_t dstSize, const char *src)
 }
 void loadFromFile(StuList *head)
 {
-    FILE *fp = fopen("students.txt", "r");
+    char dataFile[512];
+    getDataFilePath(dataFile, sizeof(dataFile), "students.txt");
+    FILE *fp = fopen(dataFile, "r");
     if (fp == NULL)
     {
         return;
@@ -548,8 +617,16 @@ void loadFromFile(StuList *head)
             skipped++;
             continue;
         }
-        copyField(newStu->hobby, sizeof(newStu->hobby), fields[FIELD_HOBBY]);
-        sanitize(newStu->hobby);
+        if (fieldCount > FIELD_HOBBY)
+        {
+            copyField(newStu->hobby, sizeof(newStu->hobby), fields[FIELD_HOBBY]);
+            sanitize(newStu->hobby);
+            if (!isBlank(newStu->hobby) && !isValidHobby(newStu->hobby))
+            {
+                printf("警告：第%d行爱好含未知项，已清空该学生的爱好。\n", lineno);
+                newStu->hobby[0] = '\0';
+            }
+        }
         int loadedOrder = 0;
         if (fieldCount >= FIELD_COUNT)
         {

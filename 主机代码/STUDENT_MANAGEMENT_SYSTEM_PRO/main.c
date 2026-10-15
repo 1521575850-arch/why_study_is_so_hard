@@ -1,6 +1,10 @@
+// main.c
 #include "student.h"
+#include <windows.h>
 int main(void)
 {
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
     StuList head = (StuList)malloc(sizeof(stu));
     if (head == NULL)
     {
@@ -59,16 +63,16 @@ int main(void)
         case 9:
         {
             int sub, asc;
-            printf("请输入科目序号(0~%d)：", SUB_MAX - 1);
+            printf("请输入科目序号(1~%d)：", SUB_MAX);
             if (scanf("%d", &sub) != 1)
             {
                 cleanInputBuffer();
                 break;
             }
             cleanInputBuffer();
-            if (sub < 0 || sub >= SUB_MAX)
+            if (sub < 1 || sub > SUB_MAX)
             {
-                printf("科目序号无效，应在0~%d之间。\n", SUB_MAX - 1);
+                printf("科目序号无效，应在1~%d之间。\n", SUB_MAX);
                 break;
             }
             printf("请输入升降序（1-升序，0-降序）：");
@@ -83,7 +87,7 @@ int main(void)
                 printf("升降序参数无效，请输入0或1。\n");
                 break;
             }
-            sortBySubject(head, sub, asc);
+            sortBySubject(head, sub - 1, asc);
             printf("单科排序完成。\n");
             break;
         }
@@ -141,24 +145,29 @@ int main(void)
             break;
         }
         waitEnter();
-        printf("\033[2J\033[H");
     }
     return 0;
 }
+static const char *MENU_ITEMS[] = {
+    "学生信息管理系统",
+    "1.新增学生",
+    "2.删除学生",
+    "3.修改学生",
+    "4.查询学生",
+    "5.显示全部学生",
+    "6.清除全部数据",
+    "7.学号排序",
+    "8.平均分排序",
+    "9.单科排序",
+    "10.恢复原始顺序",
+    "11.总分筛选",
+    "12.爱好分组",
+    "0.保存退出"
+};
 void menu(void)
 {
-    printf("学生信息管理系统\n");
-    printf("1.新增学生\n");
-    printf("2.删除学生\n");
-    printf("3.修改学生\n");
-    printf("4.查询学生\n");
-    printf("5.显示全部学生\n");
-    printf("6.清除全部数据\n");
-    printf("7.学号排序\n");
-    printf("8.平均分排序\n");
-    printf("9.单科排序\n");
-    printf("10.恢复原始顺序\n");
-    printf("11.总分筛选\n");
-    printf("12.爱好分组\n");
-    printf("0.保存退出\n");
+    for (size_t i = 0; i < sizeof(MENU_ITEMS) / sizeof(MENU_ITEMS[0]); i++)
+    {
+        printf("%s\n", MENU_ITEMS[i]);
+    }
 }

@@ -1,3 +1,4 @@
+// function.c
 #include "student.h"
 
 void cleanInputBuffer(void)
@@ -11,7 +12,11 @@ void cleanInputBuffer(void)
 void waitEnter(void)
 {
     printf("\n按下回车键继续...");
-    cleanInputBuffer();
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF)
+    {
+        ;
+    }
 }
 void trim(char *str)
 {
@@ -58,7 +63,9 @@ int isBlank(const char *str)
     while (*str)
     {
         if (!isspace((unsigned char)*str))
+        {
             return 0;
+        }
         str++;
     }
     return 1;
@@ -85,10 +92,13 @@ int readLine(char *buffer, int size)
 }
 int confirmAction(const char *prompt)
 {
+    char buf[16];
     printf("%s (y/n): ", prompt);
-    int c = getchar();
-    cleanInputBuffer();
-    return (c == 'y' || c == 'Y');
+    if (!readLine(buf, sizeof(buf)))
+    {
+        return 0;
+    }
+    return (buf[0] == 'y' || buf[0] == 'Y');
 }
 void calcTotalAvgLevel(stu *s)
 {
@@ -159,6 +169,13 @@ static void sortList(StuList head, StuCmp cmp)
 }
 static int cmpById(const stu *a, const stu *b)
 {
+    char *ea, *eb;
+    long long va = strtoll(a->id, &ea, 10);
+    long long vb = strtoll(b->id, &eb, 10);
+    if (ea != a->id && eb != b->id && *ea == '\0' && *eb == '\0')
+    {
+        return (va > vb) - (va < vb);
+    }
     return strcmp(a->id, b->id);
 }
 static int cmpByAvgDesc(const stu *a, const stu *b)

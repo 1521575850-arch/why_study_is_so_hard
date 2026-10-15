@@ -55,7 +55,7 @@ int main(int argc, const char *argv[])
         int fd = 0;
         if (-1 == (fd = open("wiyyj.log", O_RDWR | O_CREAT | O_TRUNC, 0666)))
         {
-            perro("打开文件失败");
+            perror("打开文件失败");
             return -1;
         }
         printf("打开文件成功，fd=%d\n", fd);
